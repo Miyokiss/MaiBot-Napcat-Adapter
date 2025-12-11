@@ -105,6 +105,12 @@ class NoticeHandler:
                             handled_message, user_info = await self.handle_poke_notify(raw_message, group_id, user_id)
                         else:
                             logger.warning("戳一戳消息被禁用，取消戳一戳处理")
+                    case NoticeType.Notify.group_name:
+                        if not await message_handler.check_allow_to_chat(user_id, group_id, True, False):
+                            return None
+                        logger.info("处理群名称变更")
+                        handled_message, user_info = await self.handle_group_name_notify(raw_message, group_id, user_id)
+                        system_notice = True
                     case _:
                         logger.warning(f"不支持的notify类型: {notice_type}.{sub_type}")
             case NoticeType.group_ban:
@@ -1106,6 +1112,48 @@ class NoticeHandler:
                 "essence_type": sub_type,
                 "sender_id": sender_id,
                 "message_id": message_id,
+            },
+        )
+
+        return notify_seg, user_info
+
+    async def handle_group_name_notify(
+        self, raw_message: dict, group_id: int, user_id: int
+    ) -> Tuple[Seg | None, UserInfo | None]:
+        """
+        处理群名称变更通知
+        """
+        new_name = raw_message.get("name_new")
+
+        if not new_name:
+            logger.warning("群名称变更通知缺少新名称")
+            return None, None
+
+        # 获取操作者信息
+        user_info_dict: dict = await get_member_info(self.server_connection, group_id, user_id)
+        if user_info_dict:
+            user_name = user_info_dict.get("nickname")
+            user_cardname = user_info_dict.get("card")
+        else:
+            logger.warning("无法获取修改群名称的用户信息")
+            user_name = "QQ用户"
+            user_cardname = None
+
+        user_info = UserInfo(
+            platform=global_config.maibot_server.platform_name,
+            user_id=user_id,
+            user_nickname=user_name,
+            user_cardname=user_cardname,
+        )
+
+        action_text = f"修改群名称为: {new_name}"
+
+        notify_seg = Seg(
+            type="notify",
+            data={
+                "sub_type": "group_name",
+                "action": action_text,
+                "new_name": new_name,
             },
         )
 

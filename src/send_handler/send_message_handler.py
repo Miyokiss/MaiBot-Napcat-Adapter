@@ -54,8 +54,8 @@ class SendMessageHandleClass:
             voice_url = seg.data
             new_payload = cls.build_payload(payload, cls.handle_voiceurl_message(voice_url), False)
         elif seg.type == "music":
-            song_id = seg.data
-            new_payload = cls.build_payload(payload, cls.handle_music_message(song_id), False)
+            music_data = seg.data
+            new_payload = cls.build_payload(payload, cls.handle_music_message(music_data), False)
         elif seg.type == "videourl":
             video_url = seg.data
             new_payload = cls.build_payload(payload, cls.handle_videourl_message(video_url), False)
@@ -170,12 +170,42 @@ class SendMessageHandleClass:
         }
 
     @staticmethod
-    def handle_music_message(song_id: str) -> dict:
-        """处理音乐消息"""
-        return {
-            "type": "music",
-            "data": {"type": "163", "id": song_id},
-        }
+    def handle_music_message(music_data) -> dict:
+        """
+        处理音乐消息
+        music_data 可以是：
+        1. 字符串：默认为网易云音乐ID
+        2. 字典：{"type": "163"/"qq", "id": "歌曲ID"}
+        """
+        # 兼容旧格式：直接传入歌曲ID字符串
+        if isinstance(music_data, str):
+            return {
+                "type": "music",
+                "data": {"type": "163", "id": music_data},
+            }
+        
+        # 新格式：字典包含平台和ID
+        if isinstance(music_data, dict):
+            platform = music_data.get("type", "163")  # 默认网易云
+            song_id = music_data.get("id", "")
+            
+            # 验证平台类型
+            if platform not in ["163", "qq"]:
+                logger.warning(f"不支持的音乐平台: {platform}，使用默认平台163")
+                platform = "163"
+            
+            # 确保ID是字符串
+            if not isinstance(song_id, str):
+                song_id = str(song_id)
+            
+            return {
+                "type": "music",
+                "data": {"type": platform, "id": song_id},
+            }
+        
+        # 其他情况返回空
+        logger.error(f"不支持的音乐数据格式: {type(music_data)}")
+        return {}
 
     @staticmethod
     def handle_videourl_message(video_url: str) -> dict:

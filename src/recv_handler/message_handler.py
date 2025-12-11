@@ -8,6 +8,7 @@ from src.utils import (
     get_self_info,
     get_message_detail,
 )
+import base64
 from .qq_emoji_list import qq_face
 from .message_sending import message_send_instance
 from . import RealMessageType, MessageType, ACCEPT_FORMAT
@@ -509,8 +510,22 @@ class MessageHandler:
             if app == "com.tencent.mannounce":
                 meta = parsed_json.get("meta", {})
                 mannounce = meta.get("mannounce", {})
-                title = mannounce.get("title", "")
-                text = mannounce.get("text", "")
+                title_encoded = mannounce.get("title", "")
+                text_encoded = mannounce.get("text", "")
+                
+                # 解码Base64编码的标题和内容
+                title = ""
+                text = ""
+                try:
+                    if title_encoded:
+                        title = base64.b64decode(title_encoded).decode("utf-8")
+                    if text_encoded:
+                        text = base64.b64decode(text_encoded).decode("utf-8")
+                except Exception as e:
+                    logger.warning(f"群公告Base64解码失败: {e}")
+                    # 降级使用原始值
+                    title = title_encoded
+                    text = text_encoded
                 
                 # 构建群公告文本
                 announce_text = "[群公告]"

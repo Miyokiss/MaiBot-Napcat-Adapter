@@ -41,6 +41,7 @@ class NoticeType:  # 通知事件
 
     class Notify:
         poke = "poke"  # 戳一戳
+        group_name = "group_name"  # 群名称变更
 
     class GroupBan:
         ban = "ban"  # 禁言
